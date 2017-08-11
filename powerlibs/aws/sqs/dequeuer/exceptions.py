@@ -1,0 +1,2 @@
+class MessageIgnored(Exception):
+    pass
