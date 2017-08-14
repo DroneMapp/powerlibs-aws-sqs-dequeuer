@@ -6,7 +6,7 @@ try:
 except ImportError:
     from distutils.core import setup
 
-version = '0.0.1'
+version = '0.0.2'
 
 
 def pip_git_to_setuptools_git(url):
@@ -35,13 +35,13 @@ with open('LICENSE') as f:
 setup(
     name='powerlibs-aws-sqs-dequeuer',
     version=version,
-    description="Simple dequeuer that handles messages concurrently using multiprocessing.",
+    description="Simple dequeuer that handles messages concurrently using multiprocessing or threads.",
     long_description=readme,
     author='Cléber Zavadniak',
     author_email='cleberman@gmail.com',
     url='https://github.com/Dronemapp/powerlibs-aws-sqs-dequeuer',
     license=license,
-    packages=['powerlibs', 'powerlibs.aws', 'powerlibs.aws.sqs'],
+    packages=['powerlibs', 'powerlibs.aws', 'powerlibs.aws.sqs', 'powerlibs.aws.sqs.dequeuer'],
     package_data={'': ['LICENSE', 'README.md']},
     include_package_data=True,
     install_requires=requires,
