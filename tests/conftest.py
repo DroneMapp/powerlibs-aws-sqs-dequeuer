@@ -31,7 +31,8 @@ def dequeuer(message_handler):
     return SQSDequeuer(
         'TEST QUEUE',
         message_handler,
-        process_pool_size=0,  # Do not use multiprocessing module at all.
+        process_pool_size=0,  # Do not use multiprocessing.
+        thread_pool_size=0,  # Do not use threads.
         aws_access_key_id='AWS_ID',
         aws_secret_access_key='AWS_SECRET',
         aws_region='AWS_REGION'
