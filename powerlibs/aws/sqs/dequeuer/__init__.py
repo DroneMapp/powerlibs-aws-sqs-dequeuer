@@ -1,6 +1,10 @@
+import atexit
 import logging
 import multiprocessing
 import os
+import queue
+import time
+import threading
 
 import boto3
 from cached_property import cached_property
@@ -9,30 +13,78 @@ from .handler import handle_message
 
 
 class SQSDequeuer:
-    def __init__(self, queue_name, message_handler, process_pool_size=2,
-                 aws_access_key_id=None, aws_secret_access_key=None, aws_region=None):
+    def __init__(self,
+                 queue_name, message_handler,
+                 process_pool_size=2,
+                 thread_pool_size=2,
+                 aws_access_key_id=None,
+                 aws_secret_access_key=None,
+                 aws_region=None):
         self.logger = logging.getLogger(self.__class__.__name__)
 
         self.queue_name = queue_name
         self.message_handler = message_handler
+
         self.process_pool_size = process_pool_size
+        self.thread_pool_size = thread_pool_size
+        self.thread_queue = queue.Queue()
+        self.threads = []
+        self.alive = True
 
         self.aws_access_key_id = aws_access_key_id or os.environ['AWS_ACCESS_KEY_ID']
         self.aws_secret_access_key = aws_secret_access_key or os.environ['AWS_SECRET_ACCESS_KEY']
         self.aws_region = aws_region or os.environ['AWS_REGION']
 
+        self.start_thread_pool()
+        atexit.register(self.shutdown)
+
         self.logger.debug('New SQSDequeuer: {}'.format(self.queue_name))
 
+    def shutdown(self):
+        self.alive = False
+
+        for t in self.threads:
+            t.join()
+
+    def __del__(self):
+        self.shutdown()
+
     @cached_property
-    def pool(self):
+    def process_pool(self):
         return multiprocessing.Pool(processes=self.process_pool_size)
 
-    def execute(self, function, args=None, kwargs=None):
+    def run_thread(self):
+        while self.alive:
+            try:
+                entry = self.thread_queue.get(timeout=5)
+            except queue.Empty:
+                time.sleep(5)
+                continue
+
+            function, args, kwargs = entry
+            function(*args, **kwargs)
+
+    def start_thread_pool(self):
+        for i in range(0, self.thread_pool_size):
+            t = threading.Thread(target=self.run_thread)
+            t.start()
+            self.threads.append(t)
+
+    def execute_new_process(self, function, args=None, kwargs=None):
         args = args or []
         kwargs = kwargs or {}
 
         if self.process_pool_size:
-            return self.pool.apply_async(function, args, kwargs)
+            return self.process_pool.apply_async(function, args, kwargs)
+
+        return function(*args, **kwargs)
+
+    def execute_new_thread(self, function, args=None, kwargs=None):
+        args = args or []
+        kwargs = kwargs or {}
+
+        if self.thread_pool_size:
+            return self.thread_queue.put((function, args, kwargs))
 
         return function(*args, **kwargs)
 
@@ -67,4 +119,4 @@ class SQSDequeuer:
         return messages_count
 
     def handle_message(self, message):
-        self.execute(handle_message, [self.queue_name, message, self.message_handler])
+        self.execute_new_process(handle_message, [self.queue_name, message, self.message_handler])
