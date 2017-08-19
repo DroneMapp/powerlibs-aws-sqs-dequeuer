@@ -101,8 +101,14 @@ class SQSDequeuer:
             aws_secret_access_key=self.aws_secret_access_key,
         )
 
-    def receive_messages(self):
-        return self.queue.receive_messages(MaxNumberOfMessages=1, WaitTimeSeconds=5, VisibilityTimeout=30)
+    def receive_messages(self, max_number_of_messages=1):
+        return self.queue.receive_messages(
+            MaxNumberOfMessages=max_number_of_messages,
+            WaitTimeSeconds=5,
+            VisibilityTimeout=30,
+            AttributeNames=['All'],
+            MessageAttributeNames=['All']
+        )
 
     def process_messages(self):
         messages_count = 0
