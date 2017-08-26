@@ -117,7 +117,7 @@ class SQSDequeuer:
             try:
                 self.handle_message(message)
             except Exception as ex:
-                self.logger.warn('Exception: {ex}; message: {msg}'.format(ex=ex, msg=message))
+                self.logger.warn('Exception {ex_type}: {ex}; message: {msg}'.format(ex=ex, ex_type=type(ex), msg=message.body))
             else:
                 messages_count += 1
 
