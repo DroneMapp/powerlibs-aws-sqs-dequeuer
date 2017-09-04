@@ -5,6 +5,7 @@ import os
 import queue
 import time
 import threading
+from io import StringIO
 
 import boto3
 from cached_property import cached_property
@@ -53,7 +54,12 @@ class SQSDequeuer:
     def process_pool(self):
         return multiprocessing.Pool(processes=self.process_pool_size)
 
-    def run_thread(self):
+    def run_thread(self, thread_number):
+        output = StringIO()
+        handler = logging.StreamHandler(output)
+        logger = logging.getLogger('dequeuer_thread_{}'.format(thread_number))
+        logger.addHandler(handler)
+
         while self.alive:
             try:
                 entry = self.thread_queue.get(timeout=5)
@@ -62,11 +68,19 @@ class SQSDequeuer:
                 continue
 
             function, args, kwargs = entry
-            function(*args, **kwargs)
+
+            try:
+                function(logger, *args, **kwargs)
+            except Exception as ex:
+                t = type(ex)
+                logger.error(f'Exception {t}: {ex}')  # NOQA
+
+            output.truncate()
+
 
     def start_thread_pool(self):
         for i in range(0, self.thread_pool_size):
-            t = threading.Thread(target=self.run_thread)
+            t = threading.Thread(target=self.run_thread, args=[i])
             t.start()
             self.threads.append(t)
 
@@ -74,10 +88,15 @@ class SQSDequeuer:
         args = args or []
         kwargs = kwargs or {}
 
-        if self.process_pool_size:
-            return self.process_pool.apply_async(function, args, kwargs)
+        output = StringIO()
+        handler = logging.StreamHandler(output)
+        logger = logging.getLogger('dequeuer_process')
+        logger.addHandler(handler)
 
-        return function(*args, **kwargs)
+        if self.process_pool_size:
+            return self.process_pool.apply_async(function, logger, args, kwargs)
+
+        return function(logger, *args, **kwargs)
 
     def execute_new_thread(self, function, args=None, kwargs=None):
         args = args or []
@@ -86,7 +105,11 @@ class SQSDequeuer:
         if self.thread_pool_size:
             return self.thread_queue.put((function, args, kwargs))
 
-        return function(*args, **kwargs)
+        output = StringIO()
+        handler = logging.StreamHandler(output)
+        logger = logging.getLogger('dequeuer_fake_thread')
+        logger.addHandler(handler)
+        return function(logger, *args, **kwargs)
 
     @cached_property
     def queue(self):

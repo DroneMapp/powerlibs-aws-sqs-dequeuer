@@ -23,7 +23,18 @@ def valid_message():
 
 @pytest.fixture
 def message_handler():
-    return mock.Mock()
+    class Handler:
+        def __init__(self):
+            self.call_count = 0
+            self.logger = None
+
+        def __call__(self, logger, *args, **kwargs):
+            self.logger = logger
+            logger.info('args: {}'.format(args))
+            logger.info('kwargs: {}'.format(kwargs))
+            self.call_count += 1
+
+    return Handler()
 
 
 @pytest.fixture
