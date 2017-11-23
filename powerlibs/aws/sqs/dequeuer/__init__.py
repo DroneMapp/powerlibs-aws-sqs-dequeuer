@@ -121,7 +121,8 @@ class SQSDequeuer:
             else:
                 messages_count += 1
 
-        self.logger.info('{} messages processed.'.format(messages_count))
+        if messages_count:
+            self.logger.info('{} messages processed.'.format(messages_count))
         return messages_count
 
     def handle_message(self, message):
