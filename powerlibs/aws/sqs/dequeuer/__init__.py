@@ -3,8 +3,10 @@ import logging
 import multiprocessing
 import os
 import queue
+import sys
 import time
 import threading
+import traceback
 
 import boto3
 from cached_property import cached_property
@@ -117,7 +119,10 @@ class SQSDequeuer:
             try:
                 self.handle_message(message)
             except Exception as ex:
-                self.logger.warn('Exception {ex_type}: {ex}; message: {msg}'.format(ex=ex, ex_type=type(ex), msg=message.body))
+                type_, value_, traceback_ = sys.exc_info()
+                self.logger.warn(f'Exception {type_}: {value_}; message: {message.body}')
+                formatted_traceback = traceback.format_tb(traceback_)
+                self.logger.warn(f'Traceback: {formatted_traceback}')
             else:
                 messages_count += 1
 
