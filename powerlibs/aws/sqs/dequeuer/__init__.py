@@ -105,11 +105,13 @@ class SQSDequeuer:
             aws_secret_access_key=self.aws_secret_access_key,
         )
 
-    def receive_messages(self, max_number_of_messages=1):
+    def receive_messages(self, max_number_of_messages=None, visilibity_timeout=30):
+        max_number_of_messages = max_number_of_messages or self.thread_pool_size
+        max_number_of_messages = min(10, max_number_of_messages)
         return self.queue.receive_messages(
             MaxNumberOfMessages=max_number_of_messages,
             WaitTimeSeconds=5,
-            VisibilityTimeout=30,
+            VisibilityTimeout=visilibity_timeout,
             AttributeNames=['All'],
             MessageAttributeNames=['All']
         )
@@ -129,7 +131,7 @@ class SQSDequeuer:
                 messages_count += 1
 
         if messages_count:
-            self.logger.info('{} messages processed.'.format(messages_count))
+            self.logger.debug('{} messages processed.'.format(messages_count))
         return messages_count
 
     def handle_message(self, message):
