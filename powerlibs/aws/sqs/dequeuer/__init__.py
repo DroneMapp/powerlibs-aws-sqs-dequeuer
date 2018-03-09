@@ -57,8 +57,10 @@ class SQSDequeuer:
     def process_pool(self):
         return multiprocessing.Pool(processes=self.process_pool_size)
 
-    def run_thread(self):
+    def run_thread(self, index):
+        msg = f'Thread {index} waiting for thread_queue'
         while self.alive:
+            self.logger.debug(msg)
             try:
                 entry = self.thread_queue.get(timeout=5)
             except queue.Empty:
@@ -70,7 +72,7 @@ class SQSDequeuer:
 
     def start_thread_pool(self):
         for i in range(0, self.thread_pool_size):
-            t = threading.Thread(target=self.run_thread)
+            t = threading.Thread(target=self.run_thread, args=(i,))
             t.start()
             self.threads.append(t)
 
