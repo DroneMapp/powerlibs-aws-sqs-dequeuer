@@ -30,7 +30,7 @@ class SQSDequeuer:
         self.process_pool_size = process_pool_size
         self.thread_pool_size = thread_pool_size
 
-        threads_queue_maxsize = thread_pool_size * 2
+        threads_queue_maxsize = thread_pool_size * 200
         self.thread_queue = queue.Queue(maxsize=threads_queue_maxsize)
         self.threads = []
         self.alive = True
